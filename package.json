@@ -1,0 +1,29 @@
+{
+  "name": "webgpu_compute",
+  "version": "1.0.1-beta.3",
+  "description": "",
+  "sideEffects": false,
+  "main": "lib/index.js",
+  "module": "es/index.js",
+  "umd:main": "umd/webgpu_compute.min.js",
+  "types": "es/index.d.ts",
+  "files": [
+    "lib",
+    "es",
+    "umd",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "father build",
+    "build:wasm": "/Users/didi/work/didi/opensource/emsdk/upstream/emscripten/emcc src/sum.c -s EXPORTED_FUNCTIONS='[\"_sum\"]' -o sum.js",
+    "update": "cp -f sum.wasm dist/sum.wasm && cd dist && files-to-cdn"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "father": "^4.3.1",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.4"
+  }
+}
