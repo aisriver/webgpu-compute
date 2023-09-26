@@ -6,14 +6,14 @@
 
   // 创建一个GPU缓冲区，用于存储数据
   const inputBuffer = device.createBuffer({
-    size: 1000000 * 4, // 100w个整数，每个整数占4字节
+    size: window.arraySize * 4, // 100w个整数，每个整数占4字节
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     // usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     // usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
   });
 
   // usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, // | GPUBufferUsage.MAP_WRITE,
-  const outputBufferSize = 1000000 * 4;
+  const outputBufferSize = window.arraySize * 4;
   const outputBuffer = device.createBuffer({
     size: outputBufferSize,
     // usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -62,10 +62,7 @@
   });
 
   // 将数据拷贝到GPU缓冲区中
-  const data = new Uint32Array(1000000);
-  for (let i = 0; i < data.length; i++) {
-    data[i] = Math.floor(Math.random() * 100);
-  }
+  const data = new Uint32Array(window.testData);
   device.queue.writeBuffer(inputBuffer, 0, data.buffer);
 
   // const bindGroupLayout = device.createBindGroupLayout({
@@ -97,7 +94,7 @@
         resource: {
           buffer: inputBuffer,
           offset: 0,
-          size: 1000000 * 4,
+          size: window.arraySize * 4,
         },
       },
       {
