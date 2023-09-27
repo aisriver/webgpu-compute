@@ -1,12 +1,12 @@
 (async () => {
-  console.time();
   // 创建一个GPU适配器
   const adapter = await navigator.gpu.requestAdapter();
   const device = await adapter.requestDevice();
 
+  console.time();
   // 创建一个GPU缓冲区，用于存储数据
   const inputBuffer = device.createBuffer({
-    size: window.arraySize * 4, // 100w个整数，每个整数占4字节
+    size: window.arraySize * 4, // xx个整数，每个整数占4字节
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     // usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
     // usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
@@ -26,23 +26,36 @@
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
+  const workgroupSize = 64;
+  // 32 - 115ms
+  // 64 - 105ms
+  // 128 - 105ms
+  // 256 - 110ms
+  const groupLength = Math.floor(window.arraySize / workgroupSize);
+
   // 创建一个计算Shader模块
   const computeShaderCode = `
     @group(0) @binding(0) var<storage, read> inputData: array<u32>;
     
-    @group(0) @binding(1) var<storage, read_write> outputData: u32;
+    @group(0) @binding(1) var<storage, read_write> outputData: array<u32>;
 
-    @compute @workgroup_size(1)
-    fn main() {
+    @compute @workgroup_size(${workgroupSize})
+    fn main(@builtin(workgroup_id) group_id: vec3<u32>) {
         var sum: u32 = 0;
     
         // 计算数组中元素的总和
         var length = arrayLength(&inputData);
-        for (var i: u32 = 0; i < length; i = i + 1) {
+        var globalIndex = group_id.x;
+        var startIndex = globalIndex * ${groupLength};
+        var endIndex = startIndex + ${groupLength};
+        if (endIndex > length) {
+          endIndex = length;
+        }
+        for (var i: u32 = startIndex; i < endIndex; i = i + 1) {
             sum = sum + inputData[i];
         }
     
-        outputData = sum;
+        outputData[globalIndex] = sum;
     }
     `;
   const computeShaderModule = device.createShaderModule({
@@ -111,10 +124,16 @@
   const passEncoder = commandEncoder.beginComputePass();
   passEncoder.setPipeline(pipeline);
   passEncoder.setBindGroup(0, bindGroup);
-  passEncoder.dispatchWorkgroups(1);
+  passEncoder.dispatchWorkgroups(workgroupSize);
   passEncoder.end();
 
-  commandEncoder.copyBufferToBuffer(outputBuffer, 0, destinationOutputBuffer, 0, outputBufferSize);
+  commandEncoder.copyBufferToBuffer(
+    outputBuffer,
+    0,
+    destinationOutputBuffer,
+    0,
+    outputBufferSize
+  );
 
   // 提交命令
   device.queue.submit([commandEncoder.finish()]);
@@ -127,7 +146,11 @@
   // console.log("inputBuffer index 0:", inputArr);
 
   await destinationOutputBuffer.mapAsync(GPUMapMode.READ);
-  const outputValue = new Uint32Array(destinationOutputBuffer.getMappedRange())[0];
+  const arr = new Uint32Array(destinationOutputBuffer.getMappedRange());
+  let outputValue = 0;
+  arr.forEach(val => {
+    outputValue += val;
+  });
   destinationOutputBuffer.unmap();
   // 在执行完 GPU 计算后
   // 如果只是想在 GPU 计算后获取 outputData 的值，而不需要在 CPU 上对缓冲区进行频繁的读写操作
