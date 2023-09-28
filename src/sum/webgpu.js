@@ -60,7 +60,8 @@
         var sum: u32 = 0;
     
         // 计算数组中元素的总和
-        var length = arrayLength(&inputData);
+        // var length = arrayLength(&inputData);
+        var length: u32 = ${window.arraySize};
         var invocationIndex = invocation_id.x;
         var startIndex = invocationIndex * ${groupLength};
         var endIndex = startIndex + ${groupLength};
@@ -160,8 +161,9 @@
 
   // 提交命令
   device.queue.submit([commandEncoder.finish()]);
-  const endTime = performance.now();
 
+  await device.queue.onSubmittedWorkDone();
+  const endTime = performance.now();
   console.log(`Execution time: ${endTime - startTime} ms`);
 
   // 从GPU中读取结果
