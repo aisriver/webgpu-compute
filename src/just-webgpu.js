@@ -26,12 +26,28 @@
     usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
   });
 
-  const workgroupSize = 64;
-  // 32 - 115ms
-  // 64 - 105ms
-  // 128 - 105ms
-  // 256 - 110ms
-  const groupLength = Math.floor(window.arraySize / workgroupSize);
+  const workgroupNum = {
+    x: 4,
+    y: 1,
+    z: 1,
+  };
+  const workgroupSize = {
+    x: 256,
+    y: 1,
+    z: 1,
+  };
+  // 32 - 200ms
+  // 64 - 181ms
+  // 128 - 172ms
+  // 256 - 162ms
+  const allWorkerNum =
+    workgroupNum.x *
+    workgroupNum.y *
+    workgroupNum.y *
+    workgroupSize.x *
+    workgroupSize.y *
+    workgroupSize.z;
+  const groupLength = Math.ceil(window.arraySize / allWorkerNum);
 
   // 创建一个计算Shader模块
   const computeShaderCode = `
@@ -39,14 +55,14 @@
     
     @group(0) @binding(1) var<storage, read_write> outputData: array<u32>;
 
-    @compute @workgroup_size(${workgroupSize})
-    fn main(@builtin(workgroup_id) group_id: vec3<u32>) {
+    @compute @workgroup_size(${workgroupSize.x}, ${workgroupSize.y}, ${workgroupSize.z})
+    fn main(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
         var sum: u32 = 0;
     
         // 计算数组中元素的总和
         var length = arrayLength(&inputData);
-        var globalIndex = group_id.x;
-        var startIndex = globalIndex * ${groupLength};
+        var invocationIndex = invocation_id.x;
+        var startIndex = invocationIndex * ${groupLength};
         var endIndex = startIndex + ${groupLength};
         if (endIndex > length) {
           endIndex = length;
@@ -55,7 +71,7 @@
             sum = sum + inputData[i];
         }
     
-        outputData[globalIndex] = sum;
+        outputData[invocationIndex] = sum;
     }
     `;
   const computeShaderModule = device.createShaderModule({
@@ -124,7 +140,13 @@
   const passEncoder = commandEncoder.beginComputePass();
   passEncoder.setPipeline(pipeline);
   passEncoder.setBindGroup(0, bindGroup);
-  passEncoder.dispatchWorkgroups(workgroupSize);
+  // 工作组数量 x y z
+  // @workgroup_size 里面的是每个工作组下线程数量 x y z
+  passEncoder.dispatchWorkgroups(
+    workgroupNum.x,
+    workgroupNum.y,
+    workgroupNum.z
+  );
   passEncoder.end();
 
   commandEncoder.copyBufferToBuffer(
