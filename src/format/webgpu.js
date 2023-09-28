@@ -22,7 +22,7 @@
   });
 
   const workgroupNum = {
-    x: 4,
+    x: 256,
     y: 1,
     z: 1,
   };
@@ -100,6 +100,7 @@
   });
 
   // 提交计算任务
+  const startTime = performance.now();
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginComputePass();
   passEncoder.setPipeline(pipeline);
@@ -123,6 +124,9 @@
 
   // 提交命令
   device.queue.submit([commandEncoder.finish()]);
+  const endTime = performance.now();
+
+  console.log(`Execution time: ${endTime - startTime} ms`);
 
   await destinationOutputBuffer.mapAsync(GPUMapMode.READ);
   const arr = new Uint32Array(destinationOutputBuffer.getMappedRange());

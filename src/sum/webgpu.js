@@ -136,6 +136,7 @@
   });
 
   // 提交计算任务
+  const startTime = performance.now();
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginComputePass();
   passEncoder.setPipeline(pipeline);
@@ -159,6 +160,9 @@
 
   // 提交命令
   device.queue.submit([commandEncoder.finish()]);
+  const endTime = performance.now();
+
+  console.log(`Execution time: ${endTime - startTime} ms`);
 
   // 从GPU中读取结果
   // 如果需要在 GPU 计算期间频繁地访问和修改
